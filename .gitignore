@@ -1,0 +1,20 @@
+# Bicep build outputs (ARM JSON templates)
+main.json
+modules/*.json
+
+# Azure related
+.azure/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
