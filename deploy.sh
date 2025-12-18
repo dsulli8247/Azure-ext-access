@@ -3,7 +3,7 @@
 # Azure Hub-Spoke Network Deployment Script
 # This script deploys the hub-spoke network architecture using Azure Bicep
 
-set -e  # Exit on any error
+set -euo pipefail  # Exit on any error, undefined variables, and pipe failures
 
 echo "=================================================="
 echo "Azure Hub-Spoke Network Deployment"
