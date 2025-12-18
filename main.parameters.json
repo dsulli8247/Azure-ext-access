@@ -1,0 +1,44 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "eastus"
+    },
+    "resourceGroupName": {
+      "value": "rg-hub-spoke-network"
+    },
+    "hubVNetConfig": {
+      "value": {
+        "name": "vnet-hub",
+        "addressPrefix": "10.0.0.0/16",
+        "azureFirewallSubnetPrefix": "10.0.1.0/24",
+        "gatewaySubnetPrefix": "10.0.2.0/24",
+        "bastionSubnetPrefix": "10.0.3.0/24"
+      }
+    },
+    "spokeVNetConfigs": {
+      "value": [
+        {
+          "name": "vnet-spoke1",
+          "addressPrefix": "10.1.0.0/16",
+          "workloadSubnetPrefix": "10.1.1.0/24"
+        },
+        {
+          "name": "vnet-spoke2",
+          "addressPrefix": "10.2.0.0/16",
+          "workloadSubnetPrefix": "10.2.1.0/24"
+        }
+      ]
+    },
+    "dmzSpokeVNetConfig": {
+      "value": {
+        "name": "vnet-dmz-spoke",
+        "addressPrefix": "10.3.0.0/16",
+        "azureFirewallSubnetPrefix": "10.3.1.0/24",
+        "appGatewaySubnetPrefix": "10.3.2.0/24",
+        "workloadSubnetPrefix": "10.3.3.0/24"
+      }
+    }
+  }
+}
