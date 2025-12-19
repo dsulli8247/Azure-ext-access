@@ -38,6 +38,9 @@ gcloud services enable servicenetworking.googleapis.com
 
 # Enable Kubernetes Engine API
 gcloud services enable container.googleapis.com
+
+# Enable Cloud Resource Manager API
+gcloud services enable cloudresourcemanager.googleapis.com
 ```
 
 ### Step 3: Configure Terraform (1 minute)
@@ -302,12 +305,14 @@ gcloud compute networks delete vpc-hub --quiet
 ## Troubleshooting
 
 ### Issue: API Not Enabled
-**Error**: `API [compute.googleapis.com] not enabled`
+**Error**: `API [compute.googleapis.com] not enabled` or similar API errors
 
 **Solution**:
 ```bash
 gcloud services enable compute.googleapis.com
 gcloud services enable servicenetworking.googleapis.com
+gcloud services enable container.googleapis.com
+gcloud services enable cloudresourcemanager.googleapis.com
 ```
 
 ### Issue: Insufficient Permissions
