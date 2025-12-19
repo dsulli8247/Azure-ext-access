@@ -252,7 +252,7 @@ terraform apply -debug
 ### Common Issues
 
 - **Insufficient permissions**: Ensure you have Project Editor or Owner role
-- **API not enabled**: Enable required APIs (Compute Engine API, Cloud Armor API)
+- **API not enabled**: Enable required APIs (Compute Engine API, Cloud Resource Manager API, Service Networking API, Kubernetes Engine API)
 - **Quota limits**: Check GCP quotas for VPCs, IPs, and other resources
 - **Address space conflicts**: Ensure VPC CIDR ranges don't overlap
 
@@ -262,6 +262,7 @@ terraform apply -debug
 gcloud services enable compute.googleapis.com
 gcloud services enable servicenetworking.googleapis.com
 gcloud services enable container.googleapis.com
+gcloud services enable cloudresourcemanager.googleapis.com
 ```
 
 ## Differences from Azure Implementation
