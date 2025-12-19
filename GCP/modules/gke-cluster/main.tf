@@ -52,6 +52,18 @@ variable "node_config" {
   }
 }
 
+variable "pods_ip_range" {
+  description = "Secondary IP range for GKE pods"
+  type        = string
+  default     = "10.4.0.0/16"
+}
+
+variable "services_ip_range" {
+  description = "Secondary IP range for GKE services"
+  type        = string
+  default     = "10.5.0.0/16"
+}
+
 # GKE Cluster
 resource "google_container_cluster" "gke_cluster" {
   name               = var.cluster_name

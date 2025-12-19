@@ -41,6 +41,18 @@ variable "gke_subnet_cidr" {
   default     = ""
 }
 
+variable "gke_pods_ip_range" {
+  description = "Secondary IP range for GKE pods"
+  type        = string
+  default     = "10.4.0.0/16"
+}
+
+variable "gke_services_ip_range" {
+  description = "Secondary IP range for GKE services"
+  type        = string
+  default     = "10.5.0.0/16"
+}
+
 variable "hub_firewall_ip" {
   description = "Hub firewall private IP (reserved for future NVA implementation)"
   type        = string
@@ -103,12 +115,12 @@ resource "google_compute_subnetwork" "gke_subnet" {
   # Secondary IP ranges for GKE pods and services
   secondary_ip_range {
     range_name    = "gke-pods"
-    ip_cidr_range = "10.4.0.0/16"
+    ip_cidr_range = var.gke_pods_ip_range
   }
 
   secondary_ip_range {
     range_name    = "gke-services"
-    ip_cidr_range = "10.5.0.0/16"
+    ip_cidr_range = var.gke_services_ip_range
   }
 }
 
