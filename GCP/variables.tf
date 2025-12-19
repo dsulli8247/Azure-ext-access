@@ -88,7 +88,7 @@ variable "gke_config" {
   default = {
     enabled            = true
     cluster_name       = "gke-dmz-cluster"
-    kubernetes_version = "1.28"
+    kubernetes_version = "1.32"
     node_machine_type  = "e2-medium"
     node_count         = 2
     min_node_count     = 1
