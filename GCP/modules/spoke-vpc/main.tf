@@ -26,15 +26,19 @@ variable "workload_subnet_cidr" {
 }
 
 variable "hub_firewall_ip" {
-  description = "Hub firewall private IP for routing (not used in GCP - routing via VPC peering)"
+  description = "Hub firewall private IP (reserved for future NVA implementation)"
   type        = string
 }
 
-# Note: In GCP, the hub-spoke routing model works differently than Azure:
-# - VPC peering automatically handles routing between peered VPCs
-# - Cloud NAT at the hub level handles egress traffic for all peered VPCs
-# - Custom routes with next-hop IPs require a VM/appliance, not just an IP address
-# The hub_firewall_ip is kept for API compatibility but not actively used
+# GCP Hub-Spoke Routing Notes:
+# In GCP's routing model:
+# 1. VPC peering automatically handles routing between peered VPCs
+# 2. Cloud NAT in the hub VPC handles centralized egress for all peered networks
+# 3. No explicit routes are needed - VPC peering propagates routes automatically
+# 4. For advanced routing through an NVA, deploy a VM in the hub and use next_hop_instance
+#
+# The hub_firewall_ip parameter is reserved for future Network Virtual Appliance (NVA)
+# implementations but is not used in the current VPC peering-based routing model.
 
 # Spoke VPC Network
 resource "google_compute_network" "spoke_vpc" {
@@ -88,26 +92,12 @@ resource "google_compute_firewall" "spoke_allow_iap_ssh" {
   source_ranges = ["35.235.240.0/20"] # IAP IP range
 }
 
-# Route to send traffic to hub firewall (0.0.0.0/0 to hub)
-# Note: In GCP, routing works differently than Azure's User-Defined Routes:
-# - VPC peering automatically handles routing between peered networks
-# - Custom routes with next-hop IPs require a VM/network appliance instance
-# - Cloud NAT in the hub VPC handles centralized egress for all peered VPCs
-# - This route sends to default gateway; for custom routing, deploy a network virtual appliance
-resource "google_compute_route" "spoke_default_internet" {
-  name             = "${var.vpc_name}-default-internet"
-  project          = var.project_id
-  network          = google_compute_network.spoke_vpc.name
-  dest_range       = "0.0.0.0/0"
-  priority         = 1000
-  next_hop_gateway = "default-internet-gateway"
-
-  # For hub-based routing in GCP, you would need to:
-  # 1. Deploy a network virtual appliance (NVA) in the hub with the firewall IP
-  # 2. Set next_hop_instance or next_hop_ip pointing to that NVA
-  # 3. Configure the NVA to forward traffic appropriately
-  # Example: next_hop_instance = "projects/${var.project_id}/zones/us-east1-b/instances/hub-firewall-vm"
-}
+# Note: No custom routes are needed for the hub-spoke model in GCP
+# VPC peering automatically handles routing between peered VPCs, and Cloud NAT
+# in the hub VPC provides centralized egress. GCP uses a default route to the
+# internet gateway, which Cloud NAT intercepts for NAT translation.
+# For advanced scenarios requiring traffic inspection, deploy a Network Virtual
+# Appliance (NVA) in the hub and create custom routes with next_hop_instance.
 
 # Outputs
 output "network_id" {

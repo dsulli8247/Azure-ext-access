@@ -24,7 +24,8 @@ fi
 
 # Check if user is logged in
 echo "Checking gcloud login status..."
-if ! gcloud auth list --filter=status:ACTIVE --format="value(account)" &> /dev/null; then
+ACTIVE_ACCOUNT=$(gcloud auth list --filter=status:ACTIVE --format="value(account)" 2>/dev/null)
+if [ -z "$ACTIVE_ACCOUNT" ]; then
     echo "You are not logged in to GCP. Please login..."
     gcloud auth login
     gcloud auth application-default login

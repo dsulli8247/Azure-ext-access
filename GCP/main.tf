@@ -3,7 +3,7 @@
 # DMZ spoke includes Cloud Armor and Load Balancer
 
 terraform {
-  required_version = ">= 1.0"
+  required_version = ">= 1.0, < 2.0"
   required_providers {
     google = {
       source  = "hashicorp/google"

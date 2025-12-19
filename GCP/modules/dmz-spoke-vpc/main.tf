@@ -36,15 +36,19 @@ variable "workload_subnet_cidr" {
 }
 
 variable "hub_firewall_ip" {
-  description = "Hub firewall private IP for routing (not used in GCP - routing via VPC peering)"
+  description = "Hub firewall private IP (reserved for future NVA implementation)"
   type        = string
 }
 
-# Note: In GCP, the hub-spoke routing model works differently than Azure:
-# - VPC peering automatically handles routing between peered VPCs
-# - Cloud NAT provides centralized egress without requiring route tables
-# - Custom routes with next-hop IPs require a VM/appliance, not just an IP address
-# The hub_firewall_ip is kept for API compatibility but not actively used in this implementation
+# GCP Hub-Spoke Routing Notes:
+# In GCP's routing model:
+# 1. VPC peering automatically handles routing between peered VPCs
+# 2. Cloud NAT in the hub VPC handles centralized egress for all peered networks
+# 3. No explicit routes are needed - VPC peering propagates routes automatically
+# 4. For advanced routing through an NVA, deploy a VM in the hub and use next_hop_instance
+#
+# The hub_firewall_ip parameter is reserved for future Network Virtual Appliance (NVA)
+# implementations but is not used in the current VPC peering-based routing model.
 
 # DMZ Spoke VPC Network
 resource "google_compute_network" "dmz_vpc" {
