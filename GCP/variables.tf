@@ -58,6 +58,7 @@ variable "dmz_spoke_vpc_config" {
     firewall_subnet_cidr = string
     lb_subnet_cidr       = string
     workload_subnet_cidr = string
+    gke_subnet_cidr      = string
   })
   default = {
     name                 = "vpc-dmz-spoke"
@@ -65,5 +66,28 @@ variable "dmz_spoke_vpc_config" {
     firewall_subnet_cidr = "10.3.1.0/24"
     lb_subnet_cidr       = "10.3.2.0/24"
     workload_subnet_cidr = "10.3.3.0/24"
+    gke_subnet_cidr      = "10.3.4.0/24"
+  }
+}
+
+variable "gke_config" {
+  description = "GKE cluster configuration"
+  type = object({
+    enabled            = bool
+    cluster_name       = string
+    kubernetes_version = string
+    node_machine_type  = string
+    node_count         = number
+    min_node_count     = number
+    max_node_count     = number
+  })
+  default = {
+    enabled            = true
+    cluster_name       = "gke-dmz-cluster"
+    kubernetes_version = "1.28"
+    node_machine_type  = "e2-medium"
+    node_count         = 2
+    min_node_count     = 1
+    max_node_count     = 3
   }
 }

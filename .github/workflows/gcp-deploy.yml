@@ -1,0 +1,314 @@
+name: GCP Infrastructure Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - production
+      deploy_gke:
+        description: 'Deploy GKE cluster'
+        required: true
+        default: true
+        type: boolean
+  push:
+    branches:
+      - main
+    paths:
+      - 'GCP/**'
+      - '.github/workflows/gcp-deploy.yml'
+
+env:
+  TF_VERSION: '1.6.0'
+  GCP_REGION: 'us-east1'
+
+jobs:
+  validate:
+    name: Validate Terraform Configuration
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./GCP
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Terraform Format Check
+        run: |
+          terraform fmt -check -recursive
+          echo "✅ Terraform formatting check passed"
+        continue-on-error: true
+
+      - name: Terraform Init
+        run: |
+          terraform init -backend=false
+          echo "✅ Terraform initialized"
+
+      - name: Terraform Validate
+        run: |
+          terraform validate
+          echo "✅ Terraform validation passed"
+
+  plan:
+    name: Plan GCP Deployment
+    runs-on: ubuntu-latest
+    needs: validate
+    defaults:
+      run:
+        working-directory: ./GCP
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Create terraform.tfvars
+        run: |
+          cat > terraform.tfvars <<EOF
+          project_id = "${{ secrets.GCP_PROJECT_ID }}"
+          region     = "${{ env.GCP_REGION }}"
+          EOF
+          echo "✅ Created terraform.tfvars"
+
+      - name: Terraform Init
+        run: |
+          terraform init
+          echo "✅ Terraform initialized"
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform plan -out=tfplan -no-color > plan-output.txt 2>&1
+          echo "Terraform Plan:"
+          cat plan-output.txt
+
+      - name: Upload Plan
+        uses: actions/upload-artifact@v3
+        with:
+          name: terraform-plan
+          path: GCP/tfplan
+          retention-days: 30
+
+      - name: Upload Plan Output
+        uses: actions/upload-artifact@v3
+        with:
+          name: plan-output
+          path: GCP/plan-output.txt
+          retention-days: 30
+
+  deploy:
+    name: Deploy GCP Infrastructure
+    runs-on: ubuntu-latest
+    needs: plan
+    environment: 
+      name: ${{ github.event.inputs.environment || 'dev' }}
+    defaults:
+      run:
+        working-directory: ./GCP
+    outputs:
+      gke_cluster_name: ${{ steps.outputs.outputs.gke_cluster_name }}
+      gke_cluster_endpoint: ${{ steps.outputs.outputs.gke_cluster_endpoint }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Create terraform.tfvars
+        run: |
+          cat > terraform.tfvars <<EOF
+          project_id = "${{ secrets.GCP_PROJECT_ID }}"
+          region     = "${{ env.GCP_REGION }}"
+          
+          gke_config = {
+            enabled            = ${{ github.event.inputs.deploy_gke || 'true' }}
+            cluster_name       = "gke-dmz-cluster"
+            kubernetes_version = "1.28"
+            node_machine_type  = "e2-medium"
+            node_count         = 2
+            min_node_count     = 1
+            max_node_count     = 3
+          }
+          EOF
+          echo "✅ Created terraform.tfvars"
+
+      - name: Terraform Init
+        run: |
+          terraform init
+          echo "✅ Terraform initialized"
+
+      - name: Terraform Apply
+        id: apply
+        run: |
+          terraform apply -auto-approve -no-color > apply-output.txt 2>&1
+          echo "Terraform Apply Output:"
+          cat apply-output.txt
+          echo "✅ Infrastructure deployed successfully"
+
+      - name: Get Terraform Outputs
+        id: outputs
+        run: |
+          terraform output -json > terraform-outputs.json
+          cat terraform-outputs.json
+          
+          # Extract specific outputs for use in later jobs
+          GKE_CLUSTER_NAME=$(terraform output -raw gke_cluster_name 2>/dev/null || echo "Not deployed")
+          echo "gke_cluster_name=$GKE_CLUSTER_NAME" >> $GITHUB_OUTPUT
+
+      - name: Upload Deployment Outputs
+        uses: actions/upload-artifact@v3
+        with:
+          name: terraform-outputs
+          path: |
+            GCP/apply-output.txt
+            GCP/terraform-outputs.json
+          retention-days: 90
+
+      - name: Get GKE Credentials
+        if: ${{ github.event.inputs.deploy_gke == 'true' || github.event.inputs.deploy_gke == '' }}
+        run: |
+          GKE_CLUSTER_NAME=$(terraform output -raw gke_cluster_name 2>/dev/null || echo "Not deployed")
+          
+          if [ "$GKE_CLUSTER_NAME" != "Not deployed" ]; then
+            echo "Getting GKE credentials for cluster: $GKE_CLUSTER_NAME"
+            gcloud container clusters get-credentials "$GKE_CLUSTER_NAME" \
+              --region ${{ env.GCP_REGION }} \
+              --project ${{ secrets.GCP_PROJECT_ID }}
+            echo "✅ GKE credentials configured"
+          else
+            echo "⚠️ GKE cluster not deployed"
+          fi
+
+      - name: Verify GKE Cluster
+        if: ${{ github.event.inputs.deploy_gke == 'true' || github.event.inputs.deploy_gke == '' }}
+        run: |
+          if kubectl cluster-info &>/dev/null; then
+            echo "✅ GKE cluster is accessible"
+            kubectl get nodes
+          else
+            echo "⚠️ GKE cluster not accessible or not deployed"
+          fi
+
+  deploy-k8s-app:
+    name: Deploy Kubernetes Application
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: ${{ github.event.inputs.deploy_gke == 'true' || github.event.inputs.deploy_gke == '' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Install gke-gcloud-auth-plugin
+        run: |
+          gcloud components install gke-gcloud-auth-plugin --quiet
+          echo "✅ GKE auth plugin installed"
+
+      - name: Get GKE Credentials
+        run: |
+          gcloud container clusters get-credentials gke-dmz-cluster \
+            --region ${{ env.GCP_REGION }} \
+            --project ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Deploy Hello World App
+        run: |
+          echo "Deploying Hello World application to GKE..."
+          kubectl apply -f GCP/k8s-manifests/hello-world.yaml
+          
+          echo "Waiting for deployment to be ready..."
+          kubectl wait --for=condition=available --timeout=300s deployment/hello-world
+          
+          echo "✅ Application deployed successfully"
+
+      - name: Get Service Details
+        run: |
+          echo "Waiting for LoadBalancer IP..."
+          for i in {1..30}; do
+            EXTERNAL_IP=$(kubectl get service hello-world -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
+            if [ -n "$EXTERNAL_IP" ]; then
+              echo "✅ Application is accessible at: http://$EXTERNAL_IP"
+              break
+            fi
+            echo "Waiting for external IP... ($i/30)"
+            sleep 10
+          done
+          
+          echo "Service details:"
+          kubectl get service hello-world
+
+  outputs:
+    name: Display Deployment Summary
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - name: Download Terraform Outputs
+        uses: actions/download-artifact@v3
+        with:
+          name: terraform-outputs
+
+      - name: Display Summary
+        run: |
+          echo "==================================================="
+          echo "GCP Hub-Spoke Network Deployment Summary"
+          echo "==================================================="
+          echo ""
+          echo "Terraform Outputs:"
+          cat terraform-outputs.json | jq '.'
+          echo ""
+          echo "==================================================="
+          echo "Next Steps:"
+          echo "1. Review the deployed resources in GCP Console"
+          echo "2. Configure firewall rules as needed"
+          echo "3. Deploy workloads to spoke VPCs"
+          echo "4. Access GKE cluster if deployed"
+          echo "5. Configure Cloud Armor policies"
+          echo "==================================================="

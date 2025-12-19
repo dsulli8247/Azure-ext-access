@@ -27,10 +27,12 @@ This deployment creates:
 - **VPC**: `vpc-dmz-spoke` (10.3.0.0/16)
 - **Cloud Armor**: WAF for web application protection
 - **HTTPS Load Balancer**: For front-end web application traffic
+- **Google Kubernetes Engine (GKE)**: Managed Kubernetes cluster with sample Hello World app
 - **Subnets**:
   - Firewall subnet: 10.3.1.0/24
   - Load Balancer subnet: 10.3.2.0/24
   - Workload subnet: 10.3.3.0/24
+  - GKE subnet: 10.3.4.0/24 (with secondary ranges for pods and services)
 
 ### Network Topology
 - All VPCs are peered in a hub-spoke topology
@@ -44,6 +46,7 @@ This deployment creates:
 | Virtual Network (VNet) | Virtual Private Cloud (VPC) |
 | Azure Firewall | Cloud NAT + Firewall Rules |
 | Application Gateway with WAF | Cloud Load Balancer + Cloud Armor |
+| Azure Kubernetes Service (AKS) | Google Kubernetes Engine (GKE) |
 | VNet Peering | VPC Peering |
 | User-Defined Routes | Custom Routes |
 | Network Security Groups | Firewall Rules |
@@ -111,7 +114,24 @@ terraform plan
 terraform apply
 ```
 
-### 6. Preview Changes (Terraform Plan)
+### 6. Deploy Hello World App to GKE (Post-Deployment)
+
+After the infrastructure is deployed, deploy the sample Hello World application:
+
+```bash
+# Get GKE credentials
+gcloud container clusters get-credentials gke-dmz-cluster --region us-east1 --project <your-project-id>
+
+# Deploy the application
+kubectl apply -f k8s-manifests/hello-world.yaml
+
+# Get the service external IP (may take a few minutes)
+kubectl get service hello-world --watch
+```
+
+See [k8s-manifests/README.md](k8s-manifests/README.md) for more details.
+
+### 7. Preview Changes (Terraform Plan)
 
 To preview what resources will be created without actually deploying:
 
@@ -133,10 +153,15 @@ GCP/
 │   │   └── main.tf
 │   ├── spoke-vpc/              # Standard spoke VPC module
 │   │   └── main.tf
-│   ├── dmz-spoke-vpc/          # DMZ spoke with Cloud Armor and LB
+│   ├── dmz-spoke-vpc/          # DMZ spoke with Cloud Armor, LB, and GKE
+│   │   └── main.tf
+│   ├── gke-cluster/            # GKE cluster module
 │   │   └── main.tf
 │   └── vpc-peering/            # VPC peering module
 │       └── main.tf
+├── k8s-manifests/
+│   ├── hello-world.yaml        # Hello World app deployment manifest
+│   └── README.md                # Kubernetes deployment guide
 └── README.md                    # This file
 ```
 
@@ -148,7 +173,8 @@ You can customize the deployment by modifying the variables in `terraform.tfvars
 - **region**: GCP region for deployment
 - **hub_vpc_config**: Hub VPC CIDR and subnet configurations
 - **spoke_vpc_configs**: Array of spoke VPC configurations
-- **dmz_spoke_vpc_config**: DMZ spoke VPC configuration
+- **dmz_spoke_vpc_config**: DMZ spoke VPC configuration (including GKE subnet)
+- **gke_config**: GKE cluster configuration (enable/disable, node count, machine type, etc.)
 
 ## Security Considerations
 
@@ -164,12 +190,17 @@ This deployment creates several resources that incur costs:
 - Cloud NAT gateway (~$45/month)
 - HTTPS Load Balancer (~$18/month + traffic)
 - Cloud Armor (first 5 rules free, then ~$5/rule/month)
+- GKE cluster (~$75/month for cluster management + node costs)
+- Compute Engine instances for GKE nodes (varies by machine type)
 - VPC Peering (egress charges apply)
 
 Consider using the following for dev/test environments:
 - Single VPC instead of multiple VPCs
 - Remove Cloud Armor for non-production
 - Use fewer spoke VPCs
+- Disable GKE cluster or reduce node count (set `gke_config.enabled = false` in terraform.tfvars)
+- Use smaller machine types for GKE nodes (e.g., `e2-micro` or `e2-small`)
+- Use GKE Autopilot mode for automatic resource optimization
 
 ## Clean Up
 
@@ -193,14 +224,16 @@ gcloud compute networks delete vpc-dmz-spoke --project=<project-id>
 The deployment creates the following GCP resources:
 
 - 4 VPC Networks (1 hub + 3 spokes)
-- 7 Subnets across VPCs
+- 8 Subnets across VPCs (including GKE subnet with secondary ranges)
 - 1 Cloud NAT Gateway
 - 1 Cloud Router
 - 1 HTTPS Load Balancer with Cloud Armor
 - 1 Cloud Armor Security Policy
+- 1 GKE cluster (when enabled)
 - Multiple Firewall Rules
 - 6 VPC Peerings (bidirectional between hub and each spoke)
 - External IP addresses
+- Service Accounts for GKE
 
 ## Troubleshooting
 
@@ -228,6 +261,7 @@ terraform apply -debug
 ```bash
 gcloud services enable compute.googleapis.com
 gcloud services enable servicenetworking.googleapis.com
+gcloud services enable container.googleapis.com
 ```
 
 ## Differences from Azure Implementation

@@ -35,6 +35,12 @@ variable "workload_subnet_cidr" {
   type        = string
 }
 
+variable "gke_subnet_cidr" {
+  description = "GKE subnet CIDR"
+  type        = string
+  default     = ""
+}
+
 variable "hub_firewall_ip" {
   description = "Hub firewall private IP (reserved for future NVA implementation)"
   type        = string
@@ -83,6 +89,27 @@ resource "google_compute_subnetwork" "workload_subnet" {
   region        = var.region
   network       = google_compute_network.dmz_vpc.id
   ip_cidr_range = var.workload_subnet_cidr
+}
+
+# GKE Subnet
+resource "google_compute_subnetwork" "gke_subnet" {
+  count         = var.gke_subnet_cidr != "" ? 1 : 0
+  name          = "${var.vpc_name}-gke-subnet"
+  project       = var.project_id
+  region        = var.region
+  network       = google_compute_network.dmz_vpc.id
+  ip_cidr_range = var.gke_subnet_cidr
+
+  # Secondary IP ranges for GKE pods and services
+  secondary_ip_range {
+    range_name    = "gke-pods"
+    ip_cidr_range = "10.4.0.0/16"
+  }
+
+  secondary_ip_range {
+    range_name    = "gke-services"
+    ip_cidr_range = "10.5.0.0/16"
+  }
 }
 
 # External IP for Load Balancer
@@ -264,4 +291,14 @@ output "cloud_armor_policy_id" {
 output "workload_subnet_id" {
   description = "Workload subnet ID"
   value       = google_compute_subnetwork.workload_subnet.id
+}
+
+output "gke_subnet_id" {
+  description = "GKE subnet ID"
+  value       = length(google_compute_subnetwork.gke_subnet) > 0 ? google_compute_subnetwork.gke_subnet[0].id : ""
+}
+
+output "gke_subnet_name" {
+  description = "GKE subnet name"
+  value       = length(google_compute_subnetwork.gke_subnet) > 0 ? google_compute_subnetwork.gke_subnet[0].name : ""
 }

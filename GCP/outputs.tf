@@ -49,3 +49,18 @@ output "dmz_load_balancer_ip" {
   description = "DMZ load balancer IP"
   value       = module.dmz_spoke_vpc.load_balancer_ip
 }
+
+output "gke_cluster_name" {
+  description = "GKE cluster name"
+  value       = var.gke_config.enabled ? module.gke_cluster[0].cluster_name : "Not deployed"
+}
+
+output "gke_cluster_endpoint" {
+  description = "GKE cluster endpoint"
+  value       = var.gke_config.enabled ? module.gke_cluster[0].cluster_endpoint : "Not deployed"
+}
+
+output "gke_service_account" {
+  description = "GKE service account email"
+  value       = var.gke_config.enabled ? module.gke_cluster[0].service_account_email : "Not deployed"
+}

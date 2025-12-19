@@ -2,6 +2,21 @@
 
 This repository contains Azure Bicep infrastructure as code for deploying a hub-spoke network topology with Azure Firewalls and a Web Application Firewall (WAF).
 
+## 🚀 Quick Deploy
+
+### Using GitHub Actions (Recommended)
+
+Automate your deployment using GitHub Actions:
+
+1. **Configure Secrets**: Follow the [GitHub Actions Configuration Guide](GITHUB-ACTIONS.md)
+2. **Trigger Deployment**: Go to Actions tab → Select workflow → Run workflow
+
+See [GITHUB-ACTIONS.md](GITHUB-ACTIONS.md) for detailed setup instructions.
+
+### Manual Deployment
+
+For manual deployment, see the [Deployment](#deployment) section below.
+
 ## Architecture Overview
 
 This deployment creates:
@@ -124,6 +139,12 @@ See [k8s-manifests/README.md](k8s-manifests/README.md) for more details.
 ├── k8s-manifests/
 │   ├── hello-world.yaml           # Hello World app deployment manifest
 │   └── README.md                   # Kubernetes deployment guide
+├── .github/workflows/
+│   ├── azure-deploy.yml           # GitHub Actions workflow for Azure
+│   └── gcp-deploy.yml             # GitHub Actions workflow for GCP
+├── GCP/                            # GCP deployment (Terraform)
+│   └── ...                         # See GCP/README.md
+├── GITHUB-ACTIONS.md               # GitHub Actions configuration guide
 └── README.md                       # This file
 ```
 
@@ -203,6 +224,14 @@ az deployment sub operation list --name <deployment-name>
 - **Insufficient permissions**: Ensure you have Contributor or Owner role
 - **Quota limits**: Check Azure subscription quotas for Public IPs and other resources
 - **Address space conflicts**: Ensure VNet address spaces don't overlap
+
+### GitHub Actions Issues
+
+See [GITHUB-ACTIONS.md](GITHUB-ACTIONS.md#troubleshooting) for troubleshooting GitHub Actions workflows.
+
+## Additional Deployments
+
+This repository also includes a **GCP deployment** using Terraform. See the [GCP directory](GCP/README.md) for details on deploying the same hub-spoke architecture on Google Cloud Platform.
 
 ## License
 
