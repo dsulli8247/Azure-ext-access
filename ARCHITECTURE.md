@@ -282,9 +282,6 @@ To add a new spoke VNet:
 7. Integrate Application Gateway with AKS Ingress
 8. Enable AKS Uptime SLA for production workloads
 9. Configure Azure Monitor for Containers
-4. Configure firewall application and network rules
-5. Add DDoS Protection Standard
-6. Implement Azure Policy for governance
 
 ### Advanced Security
 1. Azure Sentinel integration
