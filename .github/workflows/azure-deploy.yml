@@ -1,0 +1,251 @@
+name: Azure Infrastructure Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - production
+      deploy_aks:
+        description: 'Deploy AKS cluster'
+        required: true
+        default: true
+        type: boolean
+  push:
+    branches:
+      - main
+    paths:
+      - 'main.bicep'
+      - 'modules/**'
+      - 'main.parameters.json'
+      - '.github/workflows/azure-deploy.yml'
+
+env:
+  AZURE_RESOURCE_GROUP: 'rg-hub-spoke-network'
+  AZURE_LOCATION: 'eastus'
+
+jobs:
+  validate:
+    name: Validate Bicep Templates
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Build Bicep
+        run: |
+          az bicep build --file main.bicep
+          echo "✅ Bicep template compiled successfully"
+
+      - name: Validate Bicep Template
+        run: |
+          az deployment sub validate \
+            --location ${{ env.AZURE_LOCATION }} \
+            --template-file main.bicep \
+            --parameters main.parameters.json
+          echo "✅ Bicep template validation passed"
+
+  plan:
+    name: Plan Azure Deployment
+    runs-on: ubuntu-latest
+    needs: validate
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: What-If Deployment
+        id: whatif
+        run: |
+          echo "Running what-if analysis..."
+          az deployment sub what-if \
+            --location ${{ env.AZURE_LOCATION }} \
+            --name "deployment-$(date +%Y%m%d-%H%M%S)" \
+            --template-file main.bicep \
+            --parameters main.parameters.json \
+            --no-pretty-print > whatif-output.txt
+          
+          echo "What-If Analysis Complete"
+          cat whatif-output.txt
+
+      - name: Upload What-If Results
+        uses: actions/upload-artifact@v3
+        with:
+          name: whatif-results
+          path: whatif-output.txt
+          retention-days: 30
+
+  deploy:
+    name: Deploy Azure Infrastructure
+    runs-on: ubuntu-latest
+    needs: plan
+    environment: 
+      name: ${{ github.event.inputs.environment || 'dev' }}
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy Bicep Template
+        id: deploy
+        run: |
+          DEPLOYMENT_NAME="deployment-$(date +%Y%m%d-%H%M%S)"
+          echo "deployment_name=$DEPLOYMENT_NAME" >> $GITHUB_OUTPUT
+          echo "Starting deployment: $DEPLOYMENT_NAME"
+          
+          az deployment sub create \
+            --location ${{ env.AZURE_LOCATION }} \
+            --name "$DEPLOYMENT_NAME" \
+            --template-file main.bicep \
+            --parameters main.parameters.json \
+            --output json > deployment-output.json
+          
+          echo "✅ Deployment completed successfully"
+          
+          # Extract outputs
+          echo "Deployment Outputs:"
+          az deployment sub show \
+            --name "$DEPLOYMENT_NAME" \
+            --query properties.outputs \
+            --output json | tee deployment-outputs.json
+
+      - name: Upload Deployment Outputs
+        uses: actions/upload-artifact@v3
+        with:
+          name: deployment-outputs
+          path: |
+            deployment-output.json
+            deployment-outputs.json
+          retention-days: 90
+
+      - name: Get AKS Credentials
+        if: ${{ github.event.inputs.deploy_aks != 'false' }}
+        run: |
+          echo "Getting AKS credentials..."
+          CLUSTER_NAME=$(az deployment sub show \
+            --name "${{ steps.deploy.outputs.deployment_name }}" \
+            --query properties.outputs.aksClusterName.value \
+            --output tsv 2>/dev/null || echo "aks-dmz-cluster")
+          
+          if [ "$CLUSTER_NAME" != "Not deployed" ]; then
+            az aks get-credentials \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --name $CLUSTER_NAME \
+              --overwrite-existing
+            echo "✅ AKS credentials configured"
+          else
+            echo "⚠️ AKS cluster not deployed"
+          fi
+
+      - name: Verify AKS Cluster
+        if: ${{ github.event.inputs.deploy_aks != 'false' }}
+        run: |
+          if kubectl cluster-info &>/dev/null; then
+            echo "✅ AKS cluster is accessible"
+            kubectl get nodes
+          else
+            echo "⚠️ AKS cluster not accessible or not deployed"
+          fi
+
+  deploy-k8s-app:
+    name: Deploy Kubernetes Application
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: ${{ github.event.inputs.deploy_aks != 'false' }}
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Get AKS Credentials
+        run: |
+          az aks get-credentials \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --name aks-dmz-cluster \
+            --overwrite-existing
+
+      - name: Deploy Hello World App
+        run: |
+          echo "Deploying Hello World application to AKS..."
+          kubectl apply -f k8s-manifests/hello-world.yaml
+          
+          echo "Waiting for deployment to be ready..."
+          kubectl wait --for=condition=available --timeout=300s deployment/hello-world
+          
+          echo "✅ Application deployed successfully"
+
+      - name: Get Service Details
+        run: |
+          echo "Waiting for LoadBalancer IP..."
+          for i in {1..30}; do
+            EXTERNAL_IP=$(kubectl get service hello-world -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
+            if [ -n "$EXTERNAL_IP" ]; then
+              echo "✅ Application is accessible at: http://$EXTERNAL_IP"
+              break
+            fi
+            echo "Waiting for external IP... ($i/30)"
+            sleep 10
+          done
+          
+          echo "Service details:"
+          kubectl get service hello-world
+
+  outputs:
+    name: Display Deployment Summary
+    runs-on: ubuntu-latest
+    needs: deploy
+    permissions:
+      contents: read
+    steps:
+      - name: Download Deployment Outputs
+        uses: actions/download-artifact@v3
+        with:
+          name: deployment-outputs
+
+      - name: Display Summary
+        run: |
+          echo "==================================================="
+          echo "Azure Hub-Spoke Network Deployment Summary"
+          echo "==================================================="
+          echo ""
+          echo "Deployment Outputs:"
+          cat deployment-outputs.json | jq '.'
+          echo ""
+          echo "==================================================="
+          echo "Next Steps:"
+          echo "1. Review the deployed resources in Azure Portal"
+          echo "2. Configure firewall rules as needed"
+          echo "3. Deploy workloads to spoke VNets"
+          echo "4. Access AKS cluster if deployed"
+          echo "==================================================="

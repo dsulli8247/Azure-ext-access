@@ -35,6 +35,9 @@ gcloud services enable compute.googleapis.com
 
 # Enable Service Networking API
 gcloud services enable servicenetworking.googleapis.com
+
+# Enable Kubernetes Engine API
+gcloud services enable container.googleapis.com
 ```
 
 ### Step 3: Configure Terraform (1 minute)
@@ -90,6 +93,10 @@ After deployment completes, you'll have:
 - ✅ 2 Spoke VPCs (10.1.0.0/16, 10.2.0.0/16)
 - ✅ 1 DMZ VPC (10.3.0.0/16)
 
+### Container Platform
+- ✅ GKE cluster in DMZ (when enabled)
+- ✅ Sample Hello World app ready to deploy
+
 ### Security
 - ✅ Cloud NAT for centralized egress
 - ✅ Cloud Armor WAF for web protection
@@ -143,7 +150,37 @@ terraform output
 
 ## Next Steps
 
-### 1. Add Compute Instances
+### 1. Deploy Hello World App to GKE
+
+After the infrastructure deployment completes:
+
+```bash
+# Get GKE credentials
+gcloud container clusters get-credentials gke-dmz-cluster --region us-east1 --project YOUR_PROJECT_ID
+
+# Verify connection
+kubectl cluster-info
+
+# Deploy the Hello World app
+kubectl apply -f k8s-manifests/hello-world.yaml
+
+# Check deployment status
+kubectl get deployments
+kubectl get pods
+kubectl get services
+
+# Get the external IP (may take a few minutes)
+kubectl get service hello-world --watch
+```
+
+Once the LoadBalancer service has an external IP, access the app at:
+```
+http://<EXTERNAL-IP>
+```
+
+See [k8s-manifests/README.md](k8s-manifests/README.md) for more details.
+
+### 2. Add Compute Instances
 
 Deploy VMs to test connectivity:
 
@@ -230,7 +267,9 @@ Create budget alerts in GCP Console:
 ### Estimated Monthly Costs
 - **Hub VPC**: ~$45 (Cloud NAT)
 - **DMZ VPC**: ~$18-25 (Load Balancer + Cloud Armor)
-- **Total**: ~$63-70/month + data transfer
+- **GKE Cluster**: ~$75 (cluster management fee) + node costs
+- **GKE Nodes**: ~$25-50 (2x e2-medium instances)
+- **Total**: ~$163-195/month + data transfer
 
 ## Cleanup
 
