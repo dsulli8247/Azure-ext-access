@@ -235,8 +235,23 @@ gcloud services enable servicenetworking.googleapis.com
 1. **Firewall**: GCP uses firewall rules at the VPC level instead of dedicated firewall appliances
 2. **NAT**: Cloud NAT provides centralized egress instead of Azure Firewall
 3. **WAF**: Cloud Armor is integrated with Load Balancer instead of Application Gateway
-4. **Routing**: GCP uses custom routes instead of User-Defined Routes
+4. **Routing**: GCP uses VPC peering for inter-VPC routing instead of User-Defined Routes with next-hop appliances
 5. **Access**: IAP provides secure access instead of Azure Bastion
+
+### Important Routing Notes
+
+**GCP Hub-Spoke Routing Model:**
+- VPC peering automatically handles routing between peered VPCs
+- Cloud NAT in the hub provides centralized egress for all peered networks
+- Unlike Azure's User-Defined Routes, GCP custom routes with next-hop IPs require a VM/network appliance
+- For advanced routing scenarios (e.g., next-gen firewalls), deploy a Network Virtual Appliance (NVA) in the hub
+
+**Azure Hub-Spoke Routing Model:**
+- Route tables with next-hop virtual appliance IP addresses
+- Azure Firewall acts as the next-hop for all spoke traffic
+- More explicit routing control through route tables
+
+Both models achieve the same security posture and traffic flow, but use different mechanisms. GCP's approach is more distributed and automatic through VPC peering, while Azure's is more explicit through route tables.
 
 ## License
 

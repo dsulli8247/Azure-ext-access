@@ -26,9 +26,15 @@ variable "workload_subnet_cidr" {
 }
 
 variable "hub_firewall_ip" {
-  description = "Hub firewall private IP for routing"
+  description = "Hub firewall private IP for routing (not used in GCP - routing via VPC peering)"
   type        = string
 }
+
+# Note: In GCP, the hub-spoke routing model works differently than Azure:
+# - VPC peering automatically handles routing between peered VPCs
+# - Cloud NAT at the hub level handles egress traffic for all peered VPCs
+# - Custom routes with next-hop IPs require a VM/appliance, not just an IP address
+# The hub_firewall_ip is kept for API compatibility but not actively used
 
 # Spoke VPC Network
 resource "google_compute_network" "spoke_vpc" {
@@ -83,16 +89,24 @@ resource "google_compute_firewall" "spoke_allow_iap_ssh" {
 }
 
 # Route to send traffic to hub firewall (0.0.0.0/0 to hub)
-# Note: In GCP, custom routes are created at the network level
-resource "google_compute_route" "spoke_to_hub_default" {
-  name             = "${var.vpc_name}-to-hub-default"
+# Note: In GCP, routing works differently than Azure's User-Defined Routes:
+# - VPC peering automatically handles routing between peered networks
+# - Custom routes with next-hop IPs require a VM/network appliance instance
+# - Cloud NAT in the hub VPC handles centralized egress for all peered VPCs
+# - This route sends to default gateway; for custom routing, deploy a network virtual appliance
+resource "google_compute_route" "spoke_default_internet" {
+  name             = "${var.vpc_name}-default-internet"
   project          = var.project_id
   network          = google_compute_network.spoke_vpc.name
   dest_range       = "0.0.0.0/0"
   priority         = 1000
   next_hop_gateway = "default-internet-gateway"
-  # Note: In real implementation, this would route through hub firewall
-  # For now using default gateway as GCP handles routing differently
+
+  # For hub-based routing in GCP, you would need to:
+  # 1. Deploy a network virtual appliance (NVA) in the hub with the firewall IP
+  # 2. Set next_hop_instance or next_hop_ip pointing to that NVA
+  # 3. Configure the NVA to forward traffic appropriately
+  # Example: next_hop_instance = "projects/${var.project_id}/zones/us-east1-b/instances/hub-firewall-vm"
 }
 
 # Outputs

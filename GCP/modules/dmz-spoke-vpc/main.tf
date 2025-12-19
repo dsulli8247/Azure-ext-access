@@ -36,9 +36,15 @@ variable "workload_subnet_cidr" {
 }
 
 variable "hub_firewall_ip" {
-  description = "Hub firewall private IP for routing"
+  description = "Hub firewall private IP for routing (not used in GCP - routing via VPC peering)"
   type        = string
 }
+
+# Note: In GCP, the hub-spoke routing model works differently than Azure:
+# - VPC peering automatically handles routing between peered VPCs
+# - Cloud NAT provides centralized egress without requiring route tables
+# - Custom routes with next-hop IPs require a VM/appliance, not just an IP address
+# The hub_firewall_ip is kept for API compatibility but not actively used in this implementation
 
 # DMZ Spoke VPC Network
 resource "google_compute_network" "dmz_vpc" {
