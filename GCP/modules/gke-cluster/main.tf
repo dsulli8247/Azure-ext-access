@@ -130,7 +130,7 @@ resource "google_container_node_pool" "primary_nodes" {
   # Node configuration
   node_config {
     machine_type = var.node_config.machine_type
-    
+
     # Google recommends custom service accounts with minimal permissions
     service_account = google_service_account.gke_sa.email
     oauth_scopes = [
