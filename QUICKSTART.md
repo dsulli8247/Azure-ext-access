@@ -55,10 +55,11 @@ az deployment sub create \
 
 ### Step 5: Wait for Deployment
 
-The deployment takes approximately 15-20 minutes. Key resources being deployed:
+The deployment takes approximately 20-25 minutes. Key resources being deployed:
 - 4 Virtual Networks
 - 2 Azure Firewalls
 - 1 Application Gateway with WAF
+- 1 AKS cluster (when enabled)
 - 6 VNet Peerings
 - Route Tables
 
@@ -81,7 +82,11 @@ az deployment sub show --name <deployment-name> --query properties.outputs
 - ✅ Hub VNet (10.0.0.0/16) with Azure Firewall
 - ✅ Spoke 1 VNet (10.1.0.0/16)
 - ✅ Spoke 2 VNet (10.2.0.0/16)
-- ✅ DMZ Spoke VNet (10.3.0.0/16) with Firewall and WAF
+- ✅ DMZ Spoke VNet (10.3.0.0/16) with Firewall, WAF, and AKS
+
+### Container Platform
+- ✅ AKS cluster in DMZ (when enabled)
+- ✅ Sample Hello World app ready to deploy
 
 ### Security
 - ✅ Hub Azure Firewall (central traffic control)
@@ -133,7 +138,34 @@ Deploy VMs or other resources to the spoke VNets:
 - Spoke 2: Database tier
 - DMZ Spoke: Web tier
 
-### 4. Enable Monitoring
+### 4. Deploy Hello World App to AKS
+
+After the infrastructure deployment completes:
+
+```bash
+# Get AKS credentials
+az aks get-credentials --resource-group rg-hub-spoke-network --name aks-dmz-cluster
+
+# Deploy the Hello World app
+kubectl apply -f k8s-manifests/hello-world.yaml
+
+# Check deployment status
+kubectl get deployments
+kubectl get pods
+kubectl get services
+
+# Get the external IP (may take a few minutes)
+kubectl get service hello-world --watch
+```
+
+Once the LoadBalancer service has an external IP, access the app at:
+```
+http://<EXTERNAL-IP>
+```
+
+See [k8s-manifests/README.md](k8s-manifests/README.md) for more details.
+
+### 5. Enable Monitoring
 
 ```bash
 # Create Log Analytics workspace
@@ -147,9 +179,16 @@ az monitor diagnostic-settings create \
   --name firewall-diagnostics \
   --workspace <workspace-id> \
   --logs '[{"category":"AzureFirewallApplicationRule","enabled":true},{"category":"AzureFirewallNetworkRule","enabled":true}]'
+
+# Enable Container Insights for AKS
+az aks enable-addons \
+  --resource-group rg-hub-spoke-network \
+  --name aks-dmz-cluster \
+  --addons monitoring \
+  --workspace-resource-id <workspace-id>
 ```
 
-### 5. Harden Security
+### 6. Harden Security
 
 1. **Change WAF to Prevention Mode**:
 ```bash
@@ -242,8 +281,8 @@ This will delete all resources in the resource group. The operation takes 10-15 
 ## Cost Estimate
 
 Expected monthly costs:
-- **Development**: ~$1,500/month (with optimizations)
-- **Production**: ~$2,500/month (full deployment)
+- **Development**: ~$1,500/month (with optimizations, AKS disabled)
+- **Production**: ~$2,700/month (full deployment with AKS)
 
 Monitor costs with:
 ```bash

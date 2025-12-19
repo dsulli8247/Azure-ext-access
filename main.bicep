@@ -40,6 +40,19 @@ param dmzSpokeVNetConfig object = {
   azureFirewallSubnetPrefix: '10.3.1.0/24'
   appGatewaySubnetPrefix: '10.3.2.0/24'
   workloadSubnetPrefix: '10.3.3.0/24'
+  aksSubnetPrefix: '10.3.4.0/24'
+}
+
+@description('AKS cluster configuration')
+param aksConfig object = {
+  enabled: true
+  clusterName: 'aks-dmz-cluster'
+  dnsPrefix: 'aks-dmz'
+  kubernetesVersion: '1.28.0'
+  nodePoolVmSize: 'Standard_DS2_v2'
+  nodeCount: 2
+  minNodeCount: 1
+  maxNodeCount: 3
 }
 
 // Create resource group
@@ -86,6 +99,7 @@ module dmzSpokeVNet 'modules/dmz-spoke-vnet.bicep' = {
     azureFirewallSubnetPrefix: dmzSpokeVNetConfig.azureFirewallSubnetPrefix
     appGatewaySubnetPrefix: dmzSpokeVNetConfig.appGatewaySubnetPrefix
     workloadSubnetPrefix: dmzSpokeVNetConfig.workloadSubnetPrefix
+    aksSubnetPrefix: dmzSpokeVNetConfig.aksSubnetPrefix
     hubFirewallPrivateIp: hubVNet.outputs.firewallPrivateIp
   }
 }
@@ -146,6 +160,30 @@ module dmzToHubPeering 'modules/vnet-peering.bicep' = {
   }
 }
 
+// Deploy AKS Cluster in DMZ
+module aksCluster 'modules/aks-cluster.bicep' = if (aksConfig.enabled) {
+  name: 'deploy-aks-cluster'
+  scope: rg
+  params: {
+    location: location
+    aksClusterName: aksConfig.clusterName
+    dnsPrefix: aksConfig.dnsPrefix
+    kubernetesVersion: aksConfig.kubernetesVersion
+    subnetId: dmzSpokeVNet.outputs.aksSubnetId
+    nodePoolConfig: {
+      name: 'systempool'
+      vmSize: aksConfig.nodePoolVmSize
+      count: aksConfig.nodeCount
+      minCount: aksConfig.minNodeCount
+      maxCount: aksConfig.maxNodeCount
+      enableAutoScaling: true
+    }
+  }
+  dependsOn: [
+    dmzToHubPeering
+  ]
+}
+
 // Outputs
 output resourceGroupName string = rg.name
 output hubVNetId string = hubVNet.outputs.vnetId
@@ -155,3 +193,5 @@ output spokeVNetIds array = [for i in range(0, length(spokeVNetConfigs)): spokeV
 output dmzVNetId string = dmzSpokeVNet.outputs.vnetId
 output dmzFirewallName string = dmzSpokeVNet.outputs.firewallName
 output dmzAppGatewayName string = dmzSpokeVNet.outputs.appGatewayName
+output aksClusterName string = aksConfig.enabled ? aksCluster.outputs.aksClusterName : 'Not deployed'
+output aksClusterFqdn string = aksConfig.enabled ? aksCluster.outputs.aksClusterFqdn : 'Not deployed'
