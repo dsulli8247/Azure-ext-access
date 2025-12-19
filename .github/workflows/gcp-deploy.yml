@@ -158,12 +158,20 @@ jobs:
 
       - name: Create terraform.tfvars
         run: |
+          DEPLOY_GKE="${{ github.event.inputs.deploy_gke }}"
+          # Default to true if not specified (e.g., on push triggers)
+          if [ -z "$DEPLOY_GKE" ] || [ "$DEPLOY_GKE" = "true" ]; then
+            DEPLOY_GKE="true"
+          else
+            DEPLOY_GKE="false"
+          fi
+          
           cat > terraform.tfvars <<EOF
           project_id = "${{ secrets.GCP_PROJECT_ID }}"
           region     = "${{ env.GCP_REGION }}"
           
           gke_config = {
-            enabled            = ${{ github.event.inputs.deploy_gke || 'true' }}
+            enabled            = $DEPLOY_GKE
             cluster_name       = "gke-dmz-cluster"
             kubernetes_version = "1.28"
             node_machine_type  = "e2-medium"
@@ -207,7 +215,7 @@ jobs:
           retention-days: 90
 
       - name: Get GKE Credentials
-        if: ${{ github.event.inputs.deploy_gke == 'true' || github.event.inputs.deploy_gke == '' }}
+        if: ${{ github.event.inputs.deploy_gke != 'false' }}
         run: |
           GKE_CLUSTER_NAME=$(terraform output -raw gke_cluster_name 2>/dev/null || echo "Not deployed")
           
@@ -222,7 +230,7 @@ jobs:
           fi
 
       - name: Verify GKE Cluster
-        if: ${{ github.event.inputs.deploy_gke == 'true' || github.event.inputs.deploy_gke == '' }}
+        if: ${{ github.event.inputs.deploy_gke != 'false' }}
         run: |
           if kubectl cluster-info &>/dev/null; then
             echo "✅ GKE cluster is accessible"
@@ -235,7 +243,7 @@ jobs:
     name: Deploy Kubernetes Application
     runs-on: ubuntu-latest
     needs: deploy
-    if: ${{ github.event.inputs.deploy_gke == 'true' || github.event.inputs.deploy_gke == '' }}
+    if: ${{ github.event.inputs.deploy_gke != 'false' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
