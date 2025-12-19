@@ -17,14 +17,6 @@ on:
         required: true
         default: true
         type: boolean
-  push:
-    branches:
-      - main
-    paths:
-      - 'main.bicep'
-      - 'modules/**'
-      - 'main.parameters.json'
-      - '.github/workflows/azure-deploy.yml'
 
 env:
   AZURE_RESOURCE_GROUP: 'rg-hub-spoke-network'
