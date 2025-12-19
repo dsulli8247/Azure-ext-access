@@ -1,0 +1,34 @@
+# Terraform variables file for GCP Hub-Spoke Architecture
+# Copy this to terraform.tfvars and update with your project ID
+
+project_id = "your-gcp-project-id"
+region     = "us-east1"
+
+hub_vpc_config = {
+  name                 = "vpc-hub"
+  network_cidr         = "10.0.0.0/16"
+  firewall_subnet_cidr = "10.0.1.0/24"
+  gateway_subnet_cidr  = "10.0.2.0/24"
+  bastion_subnet_cidr  = "10.0.3.0/24"
+}
+
+spoke_vpc_configs = [
+  {
+    name                 = "vpc-spoke1"
+    network_cidr         = "10.1.0.0/16"
+    workload_subnet_cidr = "10.1.1.0/24"
+  },
+  {
+    name                 = "vpc-spoke2"
+    network_cidr         = "10.2.0.0/16"
+    workload_subnet_cidr = "10.2.1.0/24"
+  }
+]
+
+dmz_spoke_vpc_config = {
+  name                 = "vpc-dmz-spoke"
+  network_cidr         = "10.3.0.0/16"
+  firewall_subnet_cidr = "10.3.1.0/24"
+  lb_subnet_cidr       = "10.3.2.0/24"
+  workload_subnet_cidr = "10.3.3.0/24"
+}
