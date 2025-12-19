@@ -37,7 +37,20 @@
         "addressPrefix": "10.3.0.0/16",
         "azureFirewallSubnetPrefix": "10.3.1.0/24",
         "appGatewaySubnetPrefix": "10.3.2.0/24",
-        "workloadSubnetPrefix": "10.3.3.0/24"
+        "workloadSubnetPrefix": "10.3.3.0/24",
+        "aksSubnetPrefix": "10.3.4.0/24"
+      }
+    },
+    "aksConfig": {
+      "value": {
+        "enabled": true,
+        "clusterName": "aks-dmz-cluster",
+        "dnsPrefix": "aks-dmz",
+        "kubernetesVersion": "1.28.0",
+        "nodePoolVmSize": "Standard_DS2_v2",
+        "nodeCount": 2,
+        "minNodeCount": 1,
+        "maxNodeCount": 3
       }
     }
   }

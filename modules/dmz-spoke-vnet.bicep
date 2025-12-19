@@ -18,6 +18,9 @@ param appGatewaySubnetPrefix string
 @description('Workload subnet prefix')
 param workloadSubnetPrefix string
 
+@description('AKS subnet prefix')
+param aksSubnetPrefix string = ''
+
 @description('Hub firewall private IP for routing')
 param hubFirewallPrivateIp string
 
@@ -40,6 +43,16 @@ resource workloadRouteTable 'Microsoft.Network/routeTables@2023-05-01' = {
   }
 }
 
+// Route table for AKS subnet - no default route to avoid conflicts with AKS networking
+resource aksRouteTable 'Microsoft.Network/routeTables@2023-05-01' = if (!empty(aksSubnetPrefix)) {
+  name: 'rt-${vnetName}-aks'
+  location: location
+  properties: {
+    routes: []
+    disableBgpRoutePropagation: false
+  }
+}
+
 // DMZ Spoke VNet
 resource dmzSpokeVNet 'Microsoft.Network/virtualNetworks@2023-05-01' = {
   name: vnetName
@@ -50,7 +63,7 @@ resource dmzSpokeVNet 'Microsoft.Network/virtualNetworks@2023-05-01' = {
         vnetAddressPrefix
       ]
     }
-    subnets: [
+    subnets: concat([
       {
         name: 'AzureFirewallSubnet'
         properties: {
@@ -72,7 +85,17 @@ resource dmzSpokeVNet 'Microsoft.Network/virtualNetworks@2023-05-01' = {
           }
         }
       }
-    ]
+    ], !empty(aksSubnetPrefix) ? [
+      {
+        name: 'snet-aks'
+        properties: {
+          addressPrefix: aksSubnetPrefix
+          routeTable: {
+            id: aksRouteTable.id
+          }
+        }
+      }
+    ] : [])
   }
 }
 
@@ -256,3 +279,4 @@ output appGatewayId string = appGateway.id
 output appGatewayName string = appGateway.name
 output appGatewayPublicIp string = appGatewayPublicIp.properties.ipAddress
 output workloadSubnetId string = '${dmzSpokeVNet.id}/subnets/snet-workload'
+output aksSubnetId string = !empty(aksSubnetPrefix) ? '${dmzSpokeVNet.id}/subnets/snet-aks' : ''
