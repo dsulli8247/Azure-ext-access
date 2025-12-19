@@ -44,6 +44,7 @@ The implementation follows a hub-spoke network topology where:
 - **AzureFirewallSubnet** (10.3.1.0/24): DMZ firewall for additional security
 - **snet-appgateway** (10.3.2.0/24): Application Gateway with WAF
 - **snet-workload** (10.3.3.0/24): Front-end application workload
+- **snet-aks** (10.3.4.0/24): Azure Kubernetes Service cluster nodes
 
 ## Traffic Flow
 
@@ -64,11 +65,23 @@ Spoke Workload → Hub Firewall → Internet
 #### DMZ Spoke
 ```
 Internet → App Gateway (WAF) → DMZ Firewall → DMZ Workload
+Internet → AKS LoadBalancer → AKS Pods
 ```
 
 The DMZ spoke has additional protection with:
 1. Application Gateway with WAF for web traffic inspection
 2. Local Azure Firewall for additional filtering
+3. AKS cluster with network isolation in dedicated subnet
+
+### AKS Traffic Flow
+```
+Internet → AKS LoadBalancer Service → AKS Pods (Hello World App)
+```
+
+The AKS cluster is deployed in the DMZ spoke VNet with:
+- Azure CNI networking for VNet-integrated pod networking
+- LoadBalancer service type for external access
+- Network isolation in dedicated AKS subnet
 
 ### Hub-to-Spoke Traffic
 ```
@@ -155,6 +168,13 @@ All peerings are configured with:
 - Zone redundancy can be added
 - SLA: 99.95%
 
+### AKS Cluster
+- Deployed with auto-scaling enabled (2-3 nodes by default)
+- System-assigned managed identity
+- Azure CNI networking for high performance
+- Can be configured for zone redundancy
+- SLA: 99.95% (with Uptime SLA enabled)
+
 ## Scalability
 
 ### Adding New Spokes
@@ -166,6 +186,7 @@ To add a new spoke VNet:
 ### Scaling Existing Resources
 - Application Gateway: Auto-scaling (2-10 instances)
 - Azure Firewall: Automatic scaling
+- AKS Cluster: Auto-scaling enabled (1-3 nodes by default, configurable)
 - VNet address spaces: Can be expanded (requires planning)
 
 ## Cost Considerations
@@ -177,9 +198,10 @@ To add a new spoke VNet:
 | Hub Azure Firewall | ~$1,000 |
 | DMZ Azure Firewall | ~$1,000 |
 | Application Gateway v2 (WAF) | ~$500 |
+| AKS Cluster (2 nodes, Standard_DS2_v2) | ~$150 |
 | Public IP Addresses (3) | ~$10 |
 | VNet Peering | ~$10-50 (based on traffic) |
-| **Total** | **~$2,520/month** |
+| **Total** | **~$2,670/month** |
 
 *Note: Costs are estimates and vary by region and usage*
 
@@ -188,6 +210,9 @@ To add a new spoke VNet:
 2. Deploy single firewall (remove DMZ firewall)
 3. Use Network Security Groups instead of firewalls
 4. Use smaller Application Gateway SKU
+5. Disable AKS cluster when not needed (set `aksConfig.enabled: false`)
+6. Use smaller VM sizes for AKS nodes
+7. Reduce AKS node count for dev/test environments
 
 ## Disaster Recovery
 
@@ -219,11 +244,19 @@ To add a new spoke VNet:
    - Analyze traffic patterns
    - Detect anomalies
 
+4. **AKS Monitoring**
+   - Enable Container Insights
+   - Monitor pod and node health
+   - Track application performance
+   - Configure alerts for critical metrics
+
 ### Key Metrics
 - Firewall throughput
 - Application Gateway request count
 - WAF rule hits
 - VNet peering bandwidth
+- AKS node CPU and memory utilization
+- AKS pod health and availability
 
 ## Compliance
 
@@ -243,6 +276,12 @@ To add a new spoke VNet:
 1. Add VPN Gateway in hub for hybrid connectivity
 2. Add Azure Bastion for secure VM access
 3. Implement network security groups (NSGs)
+4. Configure firewall application and network rules
+5. Add DDoS Protection Standard
+6. Implement Azure Policy for governance
+7. Integrate Application Gateway with AKS Ingress
+8. Enable AKS Uptime SLA for production workloads
+9. Configure Azure Monitor for Containers
 4. Configure firewall application and network rules
 5. Add DDoS Protection Standard
 6. Implement Azure Policy for governance
