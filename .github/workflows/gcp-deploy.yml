@@ -17,12 +17,6 @@ on:
         required: true
         default: true
         type: boolean
-  push:
-    branches:
-      - main
-    paths:
-      - 'GCP/**'
-      - '.github/workflows/gcp-deploy.yml'
 
 env:
   TF_VERSION: '1.6.0'
