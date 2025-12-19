@@ -296,6 +296,50 @@ To add a new spoke VNet:
 3. Cost monitoring and alerts
 4. Compliance scanning
 
+## GCP Equivalent Architecture
+
+This repository includes an equivalent implementation on Google Cloud Platform (GCP) using Terraform. See the [GCP directory](GCP/) for the complete implementation.
+
+### Azure to GCP Feature Mapping
+
+| Azure Component | GCP Equivalent | Notes |
+|----------------|----------------|-------|
+| Virtual Network (VNet) | Virtual Private Cloud (VPC) | Core network construct |
+| Azure Firewall | Cloud NAT + Firewall Rules | GCP uses distributed firewall rules instead of dedicated firewall appliances |
+| Application Gateway with WAF | HTTPS Load Balancer + Cloud Armor | Cloud Armor provides WAF capabilities for Load Balancer |
+| Azure Kubernetes Service (AKS) | Google Kubernetes Engine (GKE) | Managed Kubernetes services |
+| VNet Peering | VPC Peering | Direct network connectivity between networks |
+| User-Defined Routes (UDR) | Custom Routes | Route table customization |
+| Network Security Groups (NSG) | Firewall Rules | Subnet/instance-level security |
+| Azure Bastion | Identity-Aware Proxy (IAP) | Secure remote access without public IPs |
+| NAT Gateway | Cloud NAT | Managed NAT service for outbound connectivity |
+| Public IP Address | External IP Address | Static or ephemeral public IPs |
+| Azure Firewall Policy | Cloud Armor Security Policy | Centralized security policy management |
+
+### Key Architectural Differences
+
+1. **Firewall Architecture**:
+   - **Azure**: Uses dedicated Azure Firewall appliances (Standard/Premium tiers) deployed in specific subnets
+   - **GCP**: Uses distributed VPC-level firewall rules with Cloud NAT for egress
+
+2. **NAT Gateway**:
+   - **Azure**: Azure Firewall includes NAT functionality; separate NAT Gateway also available
+   - **GCP**: Cloud NAT is a separate managed service for outbound connectivity
+
+3. **WAF Integration**:
+   - **Azure**: WAF is integrated into Application Gateway as part of the service
+   - **GCP**: Cloud Armor attaches to Load Balancer backend services
+
+4. **Routing**:
+   - **Azure**: Uses route tables with next-hop virtual appliance IP addresses for traffic steering
+   - **GCP**: VPC peering automatically handles routing; custom routes available for advanced scenarios
+
+5. **Network Architecture**:
+   - **Azure**: Explicit hub-spoke model with route tables forcing traffic through hub firewall
+   - **GCP**: VPC peering-based model with automatic route propagation and Cloud NAT for centralized egress
+
+Both implementations achieve the same security posture and network isolation, but use different cloud-native mechanisms appropriate to each platform.
+
 ## References
 
 - [Azure Hub-Spoke Network Topology](https://docs.microsoft.com/en-us/azure/architecture/reference-architectures/hybrid-networking/hub-spoke)
