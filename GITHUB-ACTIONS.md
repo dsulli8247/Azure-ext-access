@@ -172,6 +172,7 @@ Enable the necessary GCP APIs:
 gcloud services enable compute.googleapis.com
 gcloud services enable servicenetworking.googleapis.com
 gcloud services enable container.googleapis.com
+gcloud services enable cloudresourcemanager.googleapis.com
 ```
 
 ### Step 5: Add GCP Secrets to GitHub
@@ -328,7 +329,9 @@ Error: Compute Engine API has not been used in project xxx
 **Solution**: Enable required APIs:
 ```bash
 gcloud services enable compute.googleapis.com
+gcloud services enable servicenetworking.googleapis.com
 gcloud services enable container.googleapis.com
+gcloud services enable cloudresourcemanager.googleapis.com
 ```
 
 **Issue**: "Permission denied"
