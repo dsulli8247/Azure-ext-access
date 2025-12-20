@@ -45,7 +45,7 @@ This deployment adds an Azure Kubernetes Service (AKS) cluster to the DMZ spoke 
   - enabled: true
   - clusterName: aks-dmz-cluster
   - dnsPrefix: aks-dmz
-  - kubernetesVersion: 1.28.0
+  - kubernetesVersion: 1.32.0
   - nodePoolVmSize: Standard_DS2_v2
   - nodeCount: 2
   - minNodeCount: 1
