@@ -7,7 +7,7 @@ param location string
 param aksClusterName string
 
 @description('Kubernetes version')
-param kubernetesVersion string = '1.28.0'
+param kubernetesVersion string = '1.32.0'
 
 @description('DNS prefix for AKS cluster')
 param dnsPrefix string
