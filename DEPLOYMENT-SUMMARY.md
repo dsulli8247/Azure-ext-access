@@ -12,7 +12,7 @@ This deployment adds an Azure Kubernetes Service (AKS) cluster to the DMZ spoke 
 - Integration with VNet subnet for network isolation
 
 **Key Features:**
-- Kubernetes version: 1.28.0 (configurable)
+- Kubernetes version: 1.32.0 (configurable)
 - Network plugin: Azure CNI
 - Network policy: Azure
 - Auto-scaling enabled (1-3 nodes)
