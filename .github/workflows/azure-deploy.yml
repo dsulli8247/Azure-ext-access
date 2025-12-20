@@ -85,7 +85,7 @@ jobs:
           cat whatif-output.txt
 
       - name: Upload What-If Results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: whatif-results
           path: whatif-output.txt
@@ -136,7 +136,7 @@ jobs:
             --output json | tee deployment-outputs.json
 
       - name: Upload Deployment Outputs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: deployment-outputs
           path: |
