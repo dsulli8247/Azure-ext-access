@@ -20,7 +20,7 @@ on:
 
 env:
   AZURE_RESOURCE_GROUP: 'rg-hub-spoke-network'
-  AZURE_LOCATION: 'eastus'
+  AZURE_LOCATION: 'eastus2'
 
 jobs:
   validate:
