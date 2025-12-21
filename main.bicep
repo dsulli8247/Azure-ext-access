@@ -116,6 +116,10 @@ module hubToSpokePeerings 'modules/vnet-peering.bicep' = [for (spoke, i) in spok
     allowGatewayTransit: true
     useRemoteGateways: false
   }
+  dependsOn: [
+    hubVNet
+    spokeVNets
+  ]
 }]
 
 // Create VNet Peerings - Spokes to Hub
@@ -130,6 +134,10 @@ module spokeToHubPeerings 'modules/vnet-peering.bicep' = [for (spoke, i) in spok
     allowGatewayTransit: false
     useRemoteGateways: false
   }
+  dependsOn: [
+    hubVNet
+    spokeVNets
+  ]
 }]
 
 // Create VNet Peering - Hub to DMZ Spoke
@@ -144,6 +152,10 @@ module hubToDmzPeering 'modules/vnet-peering.bicep' = {
     allowGatewayTransit: true
     useRemoteGateways: false
   }
+  dependsOn: [
+    hubVNet
+    dmzSpokeVNet
+  ]
 }
 
 // Create VNet Peering - DMZ Spoke to Hub
@@ -158,6 +170,10 @@ module dmzToHubPeering 'modules/vnet-peering.bicep' = {
     allowGatewayTransit: false
     useRemoteGateways: false
   }
+  dependsOn: [
+    hubVNet
+    dmzSpokeVNet
+  ]
 }
 
 // Deploy AKS Cluster in DMZ
