@@ -117,14 +117,14 @@ jobs:
           cat plan-output.txt
 
       - name: Upload Plan
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: terraform-plan
           path: GCP/tfplan
           retention-days: 30
 
       - name: Upload Plan Output
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: plan-output
           path: GCP/plan-output.txt
@@ -215,7 +215,7 @@ jobs:
           echo "gke_cluster_name=$GKE_CLUSTER_NAME" >> $GITHUB_OUTPUT
 
       - name: Upload Deployment Outputs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: terraform-outputs
           path: |
