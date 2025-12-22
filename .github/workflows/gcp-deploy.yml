@@ -199,7 +199,8 @@ jobs:
       - name: Terraform Apply
         id: apply
         run: |
-          terraform apply -auto-approve -no-color > apply-output.txt 2>&1
+          #terraform apply -auto-approve -no-color > apply-output.txt 2>&1
+          terraform apply -auto-approve -no-color
           echo "Terraform Apply Output:"
           cat apply-output.txt
           echo "✅ Infrastructure deployed successfully"
