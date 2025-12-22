@@ -31,6 +31,7 @@ jobs:
         working-directory: ./GCP
     permissions:
       contents: read
+      id-token: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -75,6 +76,7 @@ jobs:
         working-directory: ./GCP
     permissions:
       contents: read
+      id-token: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -139,6 +141,7 @@ jobs:
         working-directory: ./GCP
     permissions:
       contents: read
+      id-token: write
     outputs:
       gke_cluster_name: ${{ steps.outputs.outputs.gke_cluster_name }}
       gke_cluster_endpoint: ${{ steps.outputs.outputs.gke_cluster_endpoint }}
@@ -252,6 +255,7 @@ jobs:
     if: ${{ github.event.inputs.deploy_gke != 'false' }}
     permissions:
       contents: read
+      id-token: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -307,6 +311,7 @@ jobs:
     needs: deploy
     permissions:
       contents: read
+      id-token: write
     steps:
       - name: Download Terraform Outputs
         uses: actions/download-artifact@v3
